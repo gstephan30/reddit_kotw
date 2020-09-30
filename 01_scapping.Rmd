@@ -1,0 +1,188 @@
+---
+title: "reddit_import"
+author: "Stephan Gloeckner"
+date: "9/30/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setup the enviroment
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+library(lubridate)
+theme_set(theme_light())
+```
+
+
+## Import exploration
+
+```{r}
+
+base_url <- "https://www.reddit.com/r/dominion/search.json?q=%22kotw%20{month}%2F%22&restrict_sr=1&limit=100"
+
+df_url <- tibble(
+  month = 1:12
+) %>% 
+  mutate(
+    url = glue::glue(base_url)
+  ) 
+
+parse_reddit <- function(url) {
+  
+  print(url)
+  
+  kotw_base <- url %>% 
+    read_json()
+  
+  kotw_entries <- tibble(json = kotw_base) %>%
+    slice(2) %>%
+    unnest(json) %>%
+    slice(5) %>%
+    unnest(json) 
+  
+  kotw_entries_wide <- NULL
+  for (i in 1:nrow(kotw_entries)) {
+    kotw_entries_wide[[i]] <- kotw_entries %>%
+      slice(i) %>%
+      unnest(json) %>%
+      slice(2) %>%
+      unnest_wider(json)
+  }
+  kotw_entries_wide <- bind_rows(kotw_entries_wide)
+  
+  return(kotw_entries_wide)
+}
+
+df <- df_url %>% 
+  mutate(kotw = map(url, parse_reddit))
+
+kotw_entries_wide <- df %>% 
+  select(kotw) %>% 
+  unnest(kotw) %>% 
+  filter(grepl("^KotW", title, ignore.case = TRUE)) %>% 
+  mutate(release = as.POSIXct(created, tz = "UTC", origin = "1970-01-01"),
+         release_date = as_date(release)) %>% 
+  select(id, title, upvote_ratio, ups, downs, score, release_date)
+
+```
+
+
+## Wider
+
+```{r}
+kotw <- kotw_entries_wide %>% 
+  filter(grepl("^KotW", title)) %>% 
+  #filter(id == "glx1i3") %>% 
+  #filter(score > 17) %>%
+  #select(id, title) %>%
+  #filter(id == "amy7zy") %>%  
+  mutate(title = str_remove_all(title, ' \\"Renaissance Fair\\"'),
+         title = str_replace_all(title, "Landmark\\: Obelisk \\(naming Throne Room\\)", "Landmark\\: Obelisk naming Throne Room"),
+         title = gsub(".*[0-9]\\:", "", title),
+         title = str_replace_all(title, "\\, Way\\: ", "\\. Way\\: "),
+         title = str_replace_all(title, "No Colony\\/Platinum\\/Shelters", "No Colony\\/Platinum\\. No Shelters"),
+         title = str_replace_all(title, "Salt the Earth\\, Wall\\, Sinister Plot\\.", "Event\\: Salt the Earth\\, Wall\\, Sinister Plot\\."),
+         title = str_replace_all(title, "Dominion, Seaside, Prosperity, Cornucopia, Hinterland, Empires, Nocturne", "Dominion, Seaside, Prosperity, Cornucopia, Hinterlands, Empires, Nocturne"),
+         title = str_replace_all(title, "Sage as Bane", "Bane\\: Sage")) %>% 
+  #filter(grepl("Landmark", title)) %>%
+  separate_rows(title, sep = "\\.") %>%
+  separate_rows(title, sep = ";") %>%
+  separate_rows(title, sep = " \\(") %>% 
+  mutate(indicator = case_when(grepl("Landmarks\\:", title) ~ "Landmark",
+                               grepl("Landmark\\:", title) ~ "Landmark",
+                               grepl("Way\\:", title) ~ "Way",
+                               grepl("Event\\:", title) ~ "Event",
+                               grepl("Events\\:", title) ~ "Event",
+                               grepl("Project\\:", title) ~ "Project",
+                               grepl("Projects\\:", title) ~ "Project",
+                               grepl("Shelters", title) ~ "Shelters",
+                               grepl("Colony", title) ~ "Colony_Platinum",
+                               grepl("\\[", title) ~ "Expansion",
+                               grepl("Bane\\:", title) ~ "Bane",
+                               grepl("Boons\\:", title) ~ "Boon",
+                               TRUE ~ "cards"), 
+         title = str_remove_all(title, "\\["),
+         title = str_remove_all(title, "\\]"),
+         title = str_remove_all(title, "\\)"),
+         title = str_trim(title),
+         title = as.character(title),
+         title = tolower(title),
+         title = str_to_title(title)) %>% 
+  pivot_wider(names_from = indicator,
+              values_from = title) %>% 
+  mutate_at(vars(cards:Way), as.character) %>%
+  mutate(cards = str_remove_all(cards, '\\"'),
+         cards = str_remove_all(cards, "c\\("),
+         cards = str_remove_all(cards, "\\, No Events\\/Landmarks"),
+         cards = str_remove_all(cards, "\\, No Events"),
+         cards = case_when(!grepl("Bane", cards) ~ str_remove_all(cards, "\\)"),
+                           TRUE ~ cards),
+         cards = str_remove_all(cards, "It\\'s Terminal "),
+         cards = str_remove_all(cards, "\\*"),
+         cards = str_replace_all(cards, "Smugglers", "Smuggler"),
+         cards = str_replace_all(cards, "Smuggler", "Smugglers"),
+         cards = str_replace_all(cards, "Watch Tower", "Watchtower"),
+         cards = str_replace_all(cards, "Stewart", "Steward"),
+         cards = str_replace_all(cards, "Settlers\\/Bustling Village", "Settlers"),
+         cards = str_replace_all(cards, "Settlers", "Settlers\\/Bustling Village"),
+         cards = str_replace_all(cards, "Gladiator\\/Fortune", "Gladiator"),
+         cards = str_replace_all(cards, "Gladiator", "Gladiator\\/Fortune"),
+         cards = str_replace_all(cards, "Encampment\\/Plunder", "Encampment"),
+         cards = str_replace_all(cards, "Encampment", "Encampment\\/Plunder"),
+         cards = str_replace_all(cards, "Candlestick Maker", "Candlestick"),
+         cards = str_replace_all(cards, "Candlestick", "Candlestick Maker"),
+         
+         Bane = str_remove_all(Bane, "Bane\\:"),
+         Bane = str_trim(Bane),
+         Event = str_remove_all(Event, "Event\\: "),
+         Event = str_remove_all(Event, "Events\\: "),
+         Event = str_replace_all(Event, "Scouting Party", "Scouting Part"),
+         
+         Landmark = str_remove_all(Landmark, "Landmark\\: "),
+         Landmark = str_remove_all(Landmark, "Landmarks\\: "),
+         Project = str_remove_all(Project, "Project\\: "),
+         Project = str_remove_all(Project, "Projects\\: "),
+         Way = str_remove_all(Way, "Way\\: "),
+         Shelters = str_replace_all(Shelters, "With Shelters", "Shelters"),
+         Boon = str_remove_all(Boon, "Boons\\: "),
+         Expansion = str_replace_all(Expansion, "Promos", "Promo")) %>% 
+  arrange(desc(release_date))
+```
+
+
+```{r}
+library(tidytext)
+kotw %>% 
+  pivot_longer(cols = cards:Way,
+               names_to = "test",
+               values_to = "values") %>% 
+  separate_rows(values, sep = ",") %>% 
+  mutate(values = str_trim(values),
+         test = str_replace_all(test, "\\_", " "),
+         test = str_to_title(test)) %>% 
+  filter(values != "NULL") %>% 
+  #group_by(test) %>% 
+  #mutate(values = fct_lump(values, 10)) %>% 
+  #ungroup() %>% 
+  #filter(values != "Other") %>% 
+  count(test, values, sort = TRUE) %>% 
+  group_by(test) %>% 
+  top_n(8) %>% 
+  ggplot(aes(n, reorder_within(values, n, n))) +
+  geom_col(fill = "#5757E7") +
+  facet_wrap(~test, scales = "free", ncol = 2) +
+  scale_y_reordered() +
+  labs(title = "Most used cards in KotW suggestions",
+       x = "",
+       y = "") +
+  theme(strip.background = element_rect(fill="black", colour="white"),
+         strip.text = element_text(size=12,face="bold")) +
+  scale_x_continuous(labels = scales::number_format(accuracy = 1))
+  
+```
+
