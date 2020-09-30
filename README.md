@@ -1,7 +1,7 @@
 # Analysing Dominion Kingdom of the Week Cards from reddit
 
 
-Importing KotW Set from [reddit](https://www.reddit.com/r/dominion/search/?q=%22KotW%20%22&restrict_sr=1).
+Importing KotW set from [reddit](https://www.reddit.com/r/dominion/search/?q=%22KotW%20%22&restrict_sr=1).
 
 
 ### Importing the data via reddits json API interface with R with this code:
@@ -52,5 +52,5 @@ df <- df_url %>%
 
 ### First Exploration
 
-[]
+![](https://github.com/gstephan30/reddit_kotw/blob/master/descrip_git.png?raw=true)
 
