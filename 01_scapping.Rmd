@@ -64,7 +64,7 @@ df <- df_url %>%
 kotw_entries_wide <- df %>% 
   select(kotw) %>% 
   unnest(kotw) %>% 
-  filter(grepl("^KotW", title, ignore.case = TRUE)) %>% 
+  filter(grepl("^KotW", title, ignore.case = TRUE)) %>% View()
   mutate(release = as.POSIXct(created, tz = "UTC", origin = "1970-01-01"),
          release_date = as_date(release)) %>% 
   select(id, title, upvote_ratio, ups, downs, score, release_date)
