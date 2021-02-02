@@ -47,20 +47,13 @@ kotw_entries_wide <- df %>%
   unnest(kotw) %>% 
   filter(grepl("^KotW", title, ignore.case = TRUE)) %>% 
   mutate(release = as.POSIXct(created, tz = "UTC", origin = "1970-01-01"),
-         release_date = as_date(release)) 
-
-%>% 
-  select(id, title, upvote_ratio, ups, downs, score, release_date)
+         release_date = as_date(release)) %>% 
+  select(id, title, upvote_ratio, ups, downs, score, release_date, subreddit_name_prefixed)
 
 
-kotw_entries_wide %>% 
+all_kotw <- kotw_entries_wide %>% 
   mutate(reddit_url = glue::glue("https://www.reddit.com/{subreddit_name_prefixed}/comments/{id}")) %>% 
   select(reddit_url)
-
-reddit_content("https://www.reddit.com/r/dominion/comments/kzqppx")  %>% as_tibble()
-
-test <- read_json("https://www.reddit.com/r/dominion/kzqppx.json")
-test <- read_json("https://www.reddit.com/r/dominion/l93191.json")
 
 
 get_post <- function(json_tibble){
@@ -106,6 +99,9 @@ get_replies <- function(comment_tibble){
 
 subreddit <- function(json_url){
   
+  #json_url <- "https://www.reddit.com/r/dominion/comments/1srl2e.json"
+  print(json_url)
+  
   df_json <- tibble(
     json = jsonlite::read_json(json_url)
   )
@@ -129,10 +125,24 @@ subreddit <- function(json_url){
     df_reply[[run]] <- df_post_comm %>% 
       get_replies()
     
+    if ("replies" %in% names(df_reply[[run]])) {
+      df_reply[[run]] <- df_reply[[run]] %>% 
+        mutate(replies = as.list(replies))
+    }
+    
     while (!is.na(df_reply[run])) {
       print(paste0("Reading relies depth: ", run))
+      
+      if (!"replies" %in% names(df_reply[[run]])) {
+        df_reply[[run]] <- df_reply[[run]] %>% 
+          mutate(replies = as.list(NA))
+      }
+      
       run <- run + 1
       #print(run)
+      
+      
+      
       df_reply[[run]] <- df_reply[[run-1]] %>% 
         get_replies() 
       
@@ -146,10 +156,12 @@ subreddit <- function(json_url){
     
     #print("binding")
     df <- df_post_comm %>% 
-      bind_rows(df_reply[-run])
+      bind_rows(df_reply[-run]) %>%
+      mutate_all(as.character)
     
   } else {
-    df <- df_post
+    df <- df_post %>% 
+      mutate_all(as.character)
   }
   
   
@@ -157,9 +169,36 @@ subreddit <- function(json_url){
   return(df)
 }
 
-subreddit("https://www.reddit.com/r/dominion/comments/l93191.json")
+all_kotw_reddits <- map_df(pull(all_kotw), subreddit)
 
+clean_subreddit <- function(subreddit) {
+  clean_post <- subreddit %>% 
+    filter(children_kind == "t3") %>% 
+    select(subreddit, subreddit_id, subreddit_subscribers, id, title, text = selftext, pwls, wls, ups, downs, score, 
+           name, upvote_ratio, edited, created, created_utc, permalink, 
+           total_awards_received, author_fullname, author, num_comments) %>% 
+    mutate(reddit_id = id)
+  
+  clean_replies <- subreddit %>% 
+    filter(children_kind == "t1") %>% 
+    select(subreddit, subreddit_id, id, text = body, ups, downs, score, name, depth, controversiality,
+           name, parent_id, link_id, edited, created, created_utc, author, author_fullname,
+           permalink)
+  
+  df <- bind_rows(
+    clean_post, 
+    clean_replies
+  ) %>% 
+    fill(reddit_id, .direction = "down")
+  
+  return(df)
+}
 
+clean_reddits <- clean_subreddit(all_kotw_reddits)
+df_all <- clean_reddits %>% 
+  group_by(reddit_id) %>% 
+  nest() %>% 
+  ungroup()
 
-
-
+date_string <- gsub("-", "", Sys.Date())
+save(df, file = paste0(date_string, "_kotw.RData"))
