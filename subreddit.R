@@ -99,7 +99,7 @@ get_replies <- function(comment_tibble){
 
 subreddit <- function(json_url){
   
-  #json_url <- "https://www.reddit.com/r/dominion/comments/1srl2e.json"
+  #json_url <- "https://www.reddit.com/r/dominion/comments/4703zy.json"
   print(json_url)
   
   df_json <- tibble(
@@ -109,7 +109,10 @@ subreddit <- function(json_url){
   # post information
   df_post <- df_json %>% 
     get_post()
+
   
+  post_url <- df_post$permalink
+    
   # post has comments?
   if (nrow(df_json) > 1) {
     df_post_comm <- df_post %>% 
@@ -120,39 +123,63 @@ subreddit <- function(json_url){
     
     # check if replies exists
     run <- 1
+    ind <- 0
+    depth_run <- run + ind
     df_reply <- NULL
     
-    df_reply[[run]] <- df_post_comm %>% 
+    df_reply[[depth_run]] <- df_post_comm %>% 
       get_replies()
     
-    if ("replies" %in% names(df_reply[[run]])) {
-      df_reply[[run]] <- df_reply[[run]] %>% 
+    if ("replies" %in% names(df_reply[[depth_run]])) {
+      df_reply[[depth_run]] <- df_reply[[depth_run]] %>% 
         mutate(replies = as.list(replies))
     }
     
-    while (!is.na(df_reply[run])) {
-      print(paste0("Reading relies depth: ", run))
+    while (!is.na(df_reply[depth_run])) {
+      print(paste0("Reading relies depth: ", depth_run))
       
-      if (!"replies" %in% names(df_reply[[run]])) {
-        df_reply[[run]] <- df_reply[[run]] %>% 
+      if (!"replies" %in% names(df_reply[[depth_run]])) {
+        df_reply[[depth_run]] <- df_reply[[depth_run]] %>% 
           mutate(replies = as.list(NA))
       }
       
+      depth_run <- depth_run + 1
       run <- run + 1
       #print(run)
       
+      df_reply[[depth_run]] <- df_reply[[depth_run-1]] %>% 
+        get_replies() %>% 
+        mutate(depth = depth_run)
       
-      
-      df_reply[[run]] <- df_reply[[run-1]] %>% 
-        get_replies() 
-      
-      if ("replies" %in% names(df_reply[[run]])) {
-        df_reply[[run]] <- df_reply[[run]] %>% 
+      if ("replies" %in% names(df_reply[[depth_run]])) {
+        df_reply[[depth_run]] <- df_reply[[depth_run]] %>% 
           mutate(replies = as.list(replies))
+      }
+      
+      if (run == 11) {
+        print(df_reply[[depth_run-2]]$id)
+        
+        run <- 1
+        ind <- ind + 10
+        
+        depth_url <- paste0("https://www.reddit.com", post_url, df_reply[[depth_run-2]]$id, ".json")
+        print(depth_url)
+        
+        df_reply[[depth_run]] <- tibble(
+          json = read_json("https://www.reddit.com/r/dominion/comments/4703zy/kotw_221_conspirator_courtyard_crossroads_great/d0f7luu.json")
+        ) %>% 
+          get_comments() %>% 
+          get_replies() %>% 
+          mutate(depth = ind + depth)
+          
+        depth_run <- run + ind
+        
       }
       
       #print(length(df_reply))
     }
+    
+
     
     #print("binding")
     df <- df_post_comm %>% 
@@ -168,6 +195,9 @@ subreddit <- function(json_url){
   
   return(df)
 }
+
+subreddit("https://www.reddit.com/r/dominion/comments/3mo1pv.json")
+subreddit("https://www.reddit.com/r/dominion/comments/4703zy.json")
 
 all_kotw_reddits <- map_df(pull(all_kotw), subreddit)
 
