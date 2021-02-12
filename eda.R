@@ -63,4 +63,61 @@ df_clean %>%
 
 df_clean %>% 
   count(author, sort = TRUE)
-  
+
+url_pattern <- "https\\:\\/\\/*imgur\\.com\\/a\\/[a-zA-Z0-9_.-]*"
+test <- df_all %>% 
+  unnest(data) %>% 
+  filter(grepl("t3", name)) %>% 
+  filter(grepl("^KotW", title, ignore.case = TRUE)) %>% 
+  select(reddit_id, text) %>% 
+  separate(text, c("text", "image_url"), sep = "\\[Image link to Kingdom\\.\\]") %>% 
+  mutate(image_url = str_extract_all(image_url, url_pattern)) %>% 
+  unnest(image_url, keep_empty = TRUE) 
+
+
+check_pic <- function(reddit_id, image_url) {
+  image <- paste0(reddit_id, ".jpg")
+  if (!file.exists(paste0("images/", image))) {
+    print(paste0("Downloading image: ", image))
+    download.file(
+      url = paste0(image_url, "/zip"),
+      destfile = paste0("images/", image),
+      mode = "wb"
+    )
+  } else {
+    print(paste0(image, " already exists."))
+  }
+}
+
+library(rvest)
+test %>% 
+  filter(!is.na(image_url)) %>% select(reddit_id , image_url)
+  sample_n(1) %>% 
+  pull(image_url) 
+
+check_pic("l9vo00", "https://imgur.com/a/7vLXjzD")
+
+
+%>% html_session() %>% rvest:::request_GET()
+  read_html() %>% 
+  html_nodes(xpath = "/html/body/div/div/div[1]/div/div[3]/div/div[1]/div[2]/div/div/div[2]/div/div/div/img[1]")
+rvest:::request_GET()
+ 
+page <- test %>% 
+  filter(!is.na(image_url)) %>% 
+  sample_n(1) %>% 
+  pull(image_url)
+
+
+httr::GET(page) %>% httr::content() %>% html_text()
+
+test <- page %>% 
+  html_session() 
+test$handle$url
+class(test)
+test %>% unlist() %>% grepl("fC2dBDT", .) %>% as_tibble() %>% count(value)
+curl::curl_echo(page)
+
+
+rtweet::create_token()
+rtweet:::create_token_()
