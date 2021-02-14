@@ -10,6 +10,9 @@ Rscript subreddit.R
 depdir=/home/pi/reddit_kotw
 jetzt=`date +%Y%m%d`
 
+# update rep
+git pull
+
 # Now add any changes
 git add .
 # Now commit
