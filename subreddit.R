@@ -1,7 +1,11 @@
-library(tidyverse)
+#library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(stringr)
+library(glue)
 library(jsonlite)
 library(lubridate)
-theme_set(theme_light())
 
 source("R/parse_reddit.R")
 source("R/parse_reddit_post.R")
@@ -36,7 +40,7 @@ download_images(kotw_entries_wide)
 
 
 all_kotw <- kotw_entries_wide %>% 
-  mutate(reddit_url_json = glue::glue("https://www.reddit.com/{subreddit_name_prefixed}/comments/{id}")) %>% 
+  mutate(reddit_url_json = glue("https://www.reddit.com/{subreddit_name_prefixed}/comments/{id}")) %>% 
   select(reddit_url_json)
 
 all_kotw_reddits <- map_df(pull(all_kotw), subreddit)
