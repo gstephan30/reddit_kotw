@@ -61,8 +61,12 @@ subreddit <- function(json_url){
   
   
   
+  #df_json <- tibble(
+  #  json = jsonlite::read_json(json_url)
+  #)
+  
   df_json <- tibble(
-    json = jsonlite::read_json(json_url)
+    json = jsonlite::fromJSON(json_url, simplifyVector = FALSE)
   )
   
   # post information
@@ -115,11 +119,17 @@ subreddit <- function(json_url){
         depp_rep <- NULL
         for (i in seq_along(depth_url)) {
           #i <- 1
+          #depp_rep[[i]] <- tibble(
+          #  json = read_json(depth_url[i])
+          #) %>% 
+          #  get_comments() %>% 
+          #  get_replies()
+          
           depp_rep[[i]] <- tibble(
-            json = read_json(depth_url[i])
+            json = fromJSON(depth_url[i], simplifyVector = FALSE)
           ) %>% 
             get_comments() %>% 
-            get_replies() 
+            get_replies()
           
           if ("replies" %in% names(depp_rep[[i]])) {
             depp_rep[[i]] <- depp_rep[[i]] %>% 
