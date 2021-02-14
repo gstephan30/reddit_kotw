@@ -25,6 +25,20 @@ parse_reddit <- function(url) {
 }
 
 
+#' for rpi needed to swap from read_json to fromJSON
+#' due to lexica errors
+parse_reddit_from <- function(url) {
+  print(url)
+  kotw_base <- fromJSON(url)
+  kotw_entries <- tibble(json = kotw_base) %>%
+    slice(2) %>%
+    unnest(json) %>%
+    slice(5) %>%
+    unnest_wider(json) %>%
+    unnest(cols = c(kind, data))
+  
+  return(kotw_entries)
+}
 
 
 download_images <- function(kotw_df) {

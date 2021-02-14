@@ -21,7 +21,7 @@ df_url <- tibble(
 
 
 df <- df_url %>% 
-  mutate(kotw = map(url, parse_reddit))
+  mutate(kotw = map(url, parse_reddit_from))
 
 url_pattern <- "https\\:\\/\\/*imgur\\.com\\/a\\/[a-zA-Z0-9_.-]*"
 kotw_entries_wide <- df %>% 
