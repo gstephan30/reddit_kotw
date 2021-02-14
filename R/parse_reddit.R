@@ -178,10 +178,15 @@ subreddit <- function(json_url){
       #print(length(df_reply))
     }
     
-    df <- df_post_comm %>% 
-      bind_rows(df_reply[-depth_run]) %>%
-      mutate_all(as.character)
-    
+    if (length(df_reply[-depth_run]) == 0) {
+      df <- df_post_comm %>% 
+        mutate_all(as.character)
+    } else {
+      df <- df_post_comm %>% 
+        bind_rows(df_reply[-depth_run]) %>%
+        mutate_all(as.character)
+    }
+   
   } else {
     df <- df_post %>% 
       mutate_all(as.character)
