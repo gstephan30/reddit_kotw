@@ -9,8 +9,11 @@ jetzt=`date +%Y%m%d`
 cd reddit_kotw
 git pull
 
-# run script
+# run scripts
+## download reddit
 Rscript subreddit.R
+## download twitter
+sudo Rscript subtwitter.R
 
 # Now add any changes
 git add .
