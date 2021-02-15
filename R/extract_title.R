@@ -40,7 +40,7 @@ kotw_cards <- df_all %>%
   distinct() %>% 
   filter(!is.na(title))
 
-
+kotw_cards %>% filter(grepl("Settlers", title)) 
 kotw_cards %>% 
   # corrections
   mutate(title = str_remove_all(title, ' \\"Renaissance Fair\\"'),
@@ -50,7 +50,11 @@ kotw_cards %>%
          title = str_replace_all(title, "No Colony\\/Platinum\\/Shelters", "No Colony\\/Platinum\\. No Shelters"),
          title = str_replace_all(title, "Salt the Earth\\, Wall\\, Sinister Plot\\.", "Event\\: Salt the Earth\\, Wall\\, Sinister Plot\\."),
          title = str_replace_all(title, "Dominion, Seaside, Prosperity, Cornucopia, Hinterland, Empires, Nocturne", "Dominion, Seaside, Prosperity, Cornucopia, Hinterlands, Empires, Nocturne"),
-         title = str_replace_all(title, "Sage as Bane", "Bane\\: Sage")) %>% 
+         title = str_replace_all(title, "Sage as Bane", "Bane\\: Sage"),
+         title = str_replace_all(title, "Watch Tower", "Watchtower"),
+         title = str_replace_all(title, "Stewart", "Steward"),
+         title = str_replace_all(title, "Sauna\\/Avanto", "Sauna\\, Avanto"),
+         title = str_replace_all(title, "Settlers\\/Bustling", "Settlers\\, Bustling")) %>% 
   separate_rows(title, sep = "\\,") %>% 
   separate_rows(title, sep = "\\:") %>% 
   separate_rows(title, sep = "\\;") %>% 
@@ -58,7 +62,14 @@ kotw_cards %>%
   mutate(title = str_trim(title),
          title = str_to_lower(title),
          title = str_remove_all(title, "[[:punct:]]")) %>% 
-  mutate(title = str_replace_all(title, "kings court", "king's court")) %>% 
+  mutate(title = str_replace_all(title, "kings court", "king's court"),
+         title = str_replace_all(title, "workers village", "worker's village"),
+         title = str_replace_all(title, "fools gold", "fool's gold"),
+         title = str_replace_all(title, "farmers market", "farmers' market"),
+         title = str_replace_all(title, "devils workshop", "devil's workshop"),
+         title = str_replace_all(title, "illgotten gains", "ill-gotten gains"),
+         title = str_replace_all(title, "philosophers stone", "philosopher's stone"),
+         title = ifelse(title  == "candlestick", "candlestick maker", title)) %>% 
   # filter trash
   filter(!grepl("kotw", title, fixed = TRUE),
          !grepl("events", title, fixed = TRUE),
