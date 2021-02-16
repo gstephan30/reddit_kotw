@@ -15,26 +15,63 @@ token <- create_token(app = app_name,
                       access_token = access_token,
                       access_secret = access_token_secret)
 
-df_twitter <- get_timeline("dominionkingd")
 heute <- Sys.Date()
+load("data/twitter.RData")
 
-df <- df_twitter %>% 
-  mutate_all(as.character) %>% 
-  pivot_longer(
-    cols = -c("user_id", "status_id"),
-    names_to = "key",
-    values_to = "values"
-  ) %>% 
-  mutate(
-    form = "twitter_timeline",
-    export = heute) %>% 
-  select(form, export, user_id, status_id, key, values)
+gen_twitter_data <- function(datakey) {
+  form <- paste0("twitter_", datakey)
+  print(paste0("Collecting", form))
+  
+  if (datakey == "user") {
+    dfpre <- lookup_users("dominionkingd")
+  }
+  if (datakey == "friends") {
+    dfk <- get_friends("dominionkingd") %>% 
+      mutate(form = form,
+             export = heute) %>% 
+      select(form, export, everything())
+    
+    df_checked <- dfk %>% 
+      bind_rows(df[[datakey]]) %>% 
+      distinct(user, user_id, .keep_all = TRUE)
+    
+  }
+  if (datakey == "followers") {
+    dfk <- get_followers("dominionkingd") %>% 
+      mutate(form = form,
+             export = heute) %>% 
+      select(form, export, everything()) 
+    
+    df_checked <- dfk %>% 
+      bind_rows(df[[datakey]]) %>% 
+      distinct(user_id, .keep_all = TRUE)
+  }
+  if (datakey == "timeline") {
+    dfpre <- get_timeline("dominionkingd")
+  }
+  
+  if (exists("dfpre")) {
+    dfk <- dfpre %>%   
+      mutate_all(as.character) %>% 
+      pivot_longer(
+        cols = -c("user_id", "status_id"),
+        names_to = "key",
+        values_to = "values"
+      ) %>% 
+      mutate(
+        form = form,
+        export = heute) %>% 
+      select(form, export, user_id, status_id, key, values) 
+    
+    df_checked <- dfk %>% 
+      bind_rows(df[[datakey]]) %>% 
+      distinct(status_id, key, values, .keep_all = TRUE)
+  }
+  
+  return(df_checked)
+}
+forms <- c("user", "friends", "followers", "timeline")
+df <- lapply(forms, gen_twitter_data)
+names(df) <- forms
 
-df_long <- readRDS("data/twitter_timeline.rds") %>% 
-  bind_rows(df) %>% 
-  distinct(status_id, key, values, .keep_all = TRUE)
-
-saveRDS(
-  df_long,
-  file = "data/twitter_timeline.rds"
-)
+save(df, file = "data/twitter.RData")
