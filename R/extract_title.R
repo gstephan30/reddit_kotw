@@ -1,15 +1,21 @@
-library(tidyverse)
+library(dplyr)
+library(readr)
+library(stringr)
+library(tidyr)
 library(lubridate)
-recent_file <- list.files("data/", full.names = TRUE) %>% sort(decreasing = TRUE) %>% .[1]
+library(jsonlite)
+
+
+recent_file <- list.files("data/", full.names = TRUE, pattern = "kotw") %>% sort(decreasing = TRUE) %>% .[1]
 load(recent_file)
 
 ## json cards and sets
 json_files <- list.files(path = "cards/", recursive = TRUE, pattern = "\\.json", full.names = TRUE)
 
 json_cards <- grep("cards_db.json", json_files, value = TRUE) %>% 
-  jsonlite::read_json()
+  fromJSON(simplifyVector = FALSE)
 json_sets <- grep("sets_db.json", json_files, value = TRUE) %>% 
-  jsonlite::read_json()
+  fromJSON(simplifyVector = FALSE)
 
 df_cards <- tibble(
   json = json_cards
@@ -40,8 +46,20 @@ kotw_cards <- df_all %>%
   distinct() %>% 
   filter(!is.na(title))
 
-kotw_cards %>% filter(grepl("Settlers", title)) 
-kotw_cards %>% 
+
+
+test <- kotw_cards %>% 
+  filter(grepl("Bane", title)) 
+
+
+test %>% 
+  mutate(test = gsub("Bane\\: *(.*?)", "\\1",title)) %>% 
+  select(test)
+
+pull(test[1, 2]) %>% str_
+
+
+kotw_cards %>%
   # corrections
   mutate(title = str_remove_all(title, ' \\"Renaissance Fair\\"'),
          title = str_replace_all(title, "Landmark\\: Obelisk \\(naming Throne Room\\)", "Landmark\\: Obelisk naming Throne Room"),
@@ -54,7 +72,8 @@ kotw_cards %>%
          title = str_replace_all(title, "Watch Tower", "Watchtower"),
          title = str_replace_all(title, "Stewart", "Steward"),
          title = str_replace_all(title, "Sauna\\/Avanto", "Sauna\\, Avanto"),
-         title = str_replace_all(title, "Settlers\\/Bustling", "Settlers\\, Bustling")) %>% 
+         title = str_replace_all(title, "Settlers\\/Bustling", "Settlers\\, Bustling"),
+         title = str_remove_all(title, "BM Deck: Prosperity and Cornucopia, excluding Tournament and Young Witch.")) %>% 
   separate_rows(title, sep = "\\,") %>% 
   separate_rows(title, sep = "\\:") %>% 
   separate_rows(title, sep = "\\;") %>% 
@@ -77,7 +96,8 @@ kotw_cards %>%
          !grepl("landmarks", title, fixed = TRUE),
          !grepl("landmark", title, fixed = TRUE),
          !grepl("way", title, fixed = TRUE),
-         !grepl("projects", title, fixed = TRUE)) %>%
+         !grepl("projects", title, fixed = TRUE),
+         !grepl("project", title, fixed = TRUE)) %>%
   left_join(
     df_cards %>% 
       select(card_tag, group_tag) %>% 
