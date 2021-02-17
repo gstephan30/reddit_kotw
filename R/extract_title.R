@@ -46,23 +46,20 @@ kotw_cards <- df_all %>%
   distinct() %>% 
   filter(!is.na(title))
 
+bane <- kotw_cards %>% 
+  filter(grepl("bane", title, ignore.case = TRUE)) %>% 
+  mutate(title = ifelse(grepl("Sage as Bane", title), str_replace_all(title, "Sage as Bane", "Bane: Sage"), title)) %>% 
+  mutate(bane = str_extract(title, "Bane:.*")) %>% 
+  separate(bane, c("bane", "trash"), sep = "\\.") %>% 
+  select(-trash) %>% 
+  mutate(bane = str_remove_all(bane, "Bane\\: |\\)")) %>% 
+  select(reddit_id, bane)
 
-
-test <- kotw_cards %>% 
-  filter(grepl("Bane", title)) 
-
-
-test %>% 
-  mutate(test = gsub("Bane\\: *(.*?)", "\\1",title)) %>% 
-  select(test)
-
-pull(test[1, 2]) %>% str_
-
-
-kotw_cards %>%
+cards_clean_pre <- kotw_cards %>% 
   # corrections
   mutate(title = str_remove_all(title, ' \\"Renaissance Fair\\"'),
-         title = str_replace_all(title, "Landmark\\: Obelisk \\(naming Throne Room\\)", "Landmark\\: Obelisk naming Throne Room"),
+         title = ifelse(reddit_id == "4c8hpb", "Beggar, Bishop, Counterfeit, Courtyard, Doctor, Ghost Ship, Ill-Gotten Gains, Stonemason, Throne Room, Trader. No Colony/Platinum; no Shelters. [Dominion, Intrigue, Seaside, Prosperity, Hinterlands, Dark Ages, Guilds]", title),
+         title = str_replace_all(title, "Landmark\\: Obelisk \\(naming Throne Room\\)", "Landmark\\: Obelisk"),
          title = gsub(".*[0-9]\\:", "", title),
          title = str_replace_all(title, "\\, Way\\: ", "\\. Way\\: "),
          title = str_replace_all(title, "No Colony\\/Platinum\\/Shelters", "No Colony\\/Platinum\\. No Shelters"),
@@ -73,14 +70,16 @@ kotw_cards %>%
          title = str_replace_all(title, "Stewart", "Steward"),
          title = str_replace_all(title, "Sauna\\/Avanto", "Sauna\\, Avanto"),
          title = str_replace_all(title, "Settlers\\/Bustling", "Settlers\\, Bustling"),
-         title = str_remove_all(title, "BM Deck: Prosperity and Cornucopia, excluding Tournament and Young Witch.")) %>% 
+         title = str_remove_all(title, "BM Deck: Prosperity and Cornucopia, excluding Tournament and Young Witch.")) %>%
   separate_rows(title, sep = "\\,") %>% 
   separate_rows(title, sep = "\\:") %>% 
   separate_rows(title, sep = "\\;") %>% 
   separate_rows(title, sep = "\\.") %>% 
   mutate(title = str_trim(title),
          title = str_to_lower(title),
-         title = str_remove_all(title, "[[:punct:]]")) %>% 
+         title = str_remove_all(title, "[[:punct:]]"),
+         title = str_remove_all(title, "promos"),
+         title = str_remove_all(title, "all sets")) %>% 
   mutate(title = str_replace_all(title, "kings court", "king's court"),
          title = str_replace_all(title, "workers village", "worker's village"),
          title = str_replace_all(title, "fools gold", "fool's gold"),
@@ -88,7 +87,11 @@ kotw_cards %>%
          title = str_replace_all(title, "devils workshop", "devil's workshop"),
          title = str_replace_all(title, "illgotten gains", "ill-gotten gains"),
          title = str_replace_all(title, "philosophers stone", "philosopher's stone"),
-         title = ifelse(title  == "candlestick", "candlestick maker", title)) %>% 
+         title = str_replace_all(title, "night guardian", "guardian"),
+         title = ifelse(title  == "scouting part", "scouting party", title),
+         title = ifelse(title  == "candlestick", "candlestick maker", title),
+         title = ifelse(title  == "bath", "baths", title)) %>% 
+  mutate(title = ifelse(title == "smuggler", "smugglers", title)) %>% 
   # filter trash
   filter(!grepl("kotw", title, fixed = TRUE),
          !grepl("events", title, fixed = TRUE),
@@ -97,7 +100,43 @@ kotw_cards %>%
          !grepl("landmark", title, fixed = TRUE),
          !grepl("way", title, fixed = TRUE),
          !grepl("projects", title, fixed = TRUE),
-         !grepl("project", title, fixed = TRUE)) %>%
+         !grepl("project", title, fixed = TRUE),
+         !grepl("bane", title, fixed = TRUE)) 
+
+
+
+
+split_pile <- tibble(
+  cards_together = c("gladiatorfortune", "gladiatorfortune",
+                     "encampmentplunder", "encampmentplunder",
+                     "patricianemporium", "patricianemporium",
+                     "catapultrocks", "catapultrocks"),
+  cards_single = c("gladiator", "fortune", 
+                   "encampment", "plunder", 
+                   "patrician", "emporium",
+                   "catapult", "rocks")
+)
+
+split_cards <- function(df, id_column, cards_column) {
+  df %>% 
+    filter({{ cards_column }} %in% pull(split_pile, cards_together)) %>% 
+    rename(cards_together = {{ cards_column }}) %>% 
+    left_join(split_pile) %>% 
+    select({{ id_column }}, {{ cards_column }} := cards_single) 
+}
+
+add_split_cards <- cards_clean_pre %>% 
+  bind_rows(split_cards(cards_clean_pre, reddit_id, title)) %>% 
+  filter(!title %in% pull(split_pile, cards_together)) %>% 
+  arrange(reddit_id) 
+
+correct_boon <- add_split_cards %>% 
+  mutate(title = ifelse(title == "river", "the river's gift.", title),
+         title = ifelse(title == "sun", "the sun's gift", title),
+         title = ifelse(title == "field", "the field's gift", title)) %>% 
+  filter(title != "boons")
+
+card_clean <- correct_boon %>%
   left_join(
     df_cards %>% 
       select(card_tag, group_tag) %>% 
@@ -112,95 +151,17 @@ kotw_cards %>%
     by = c("title" = "expansion")
   ) %>% 
   mutate(key = ifelse(is.na(key.x), key.y, key.x)) %>% 
-  select(-key.x, -key.y) %>% 
+  select(-key.x, -key.y) 
+
+
+# test
+card_clean %>% 
+  filter(grepl("farmer", title))
+
+# further cleaning required
+card_clean %>% 
   filter(is.na(key)) %>% count(title, sort = TRUE) %>% print(n=100)
 
 
+  
 
-
-
-%>% 
-    mutate(title = str_remove_all(title, ' \\"Renaissance Fair\\"'),
-           title = str_replace_all(title, "Landmark\\: Obelisk \\(naming Throne Room\\)", "Landmark\\: Obelisk naming Throne Room"),
-           title = gsub(".*[0-9]\\:", "", title),
-           title = str_replace_all(title, "\\, Way\\: ", "\\. Way\\: "),
-           title = str_replace_all(title, "No Colony\\/Platinum\\/Shelters", "No Colony\\/Platinum\\. No Shelters"),
-           title = str_replace_all(title, "Salt the Earth\\, Wall\\, Sinister Plot\\.", "Event\\: Salt the Earth\\, Wall\\, Sinister Plot\\."),
-           title = str_replace_all(title, "Dominion, Seaside, Prosperity, Cornucopia, Hinterland, Empires, Nocturne", "Dominion, Seaside, Prosperity, Cornucopia, Hinterlands, Empires, Nocturne"),
-           title = str_replace_all(title, "Sage as Bane", "Bane\\: Sage")) %>% 
-    #filter(grepl("Landmark", title)) %>%
-    separate_rows(title, sep = "\\.") %>%
-    separate_rows(title, sep = ";") %>%
-    separate_rows(title, sep = " \\(") %>% 
-    mutate(indicator = case_when(grepl("Landmarks\\:", title) ~ "Landmark",
-                                 grepl("Landmark\\:", title) ~ "Landmark",
-                                 grepl("Way\\:", title) ~ "Way",
-                                 grepl("Event\\:", title) ~ "Event",
-                                 grepl("Events\\:", title) ~ "Event",
-                                 grepl("Project\\:", title) ~ "Project",
-                                 grepl("Projects\\:", title) ~ "Project",
-                                 grepl("Shelters", title) ~ "Shelters",
-                                 grepl("Colony", title) ~ "Colony_Platinum",
-                                 grepl("\\[", title) ~ "Expansion",
-                                 grepl("Bane\\:", title) ~ "Bane",
-                                 grepl("Boons\\:", title) ~ "Boon",
-                                 TRUE ~ "cards"), 
-           title = str_remove_all(title, "\\["),
-           title = str_remove_all(title, "\\]"),
-           title = str_remove_all(title, "\\)"),
-           title = str_trim(title),
-           title = as.character(title),
-           title = tolower(title),
-           title = str_to_title(title)) %>% 
-    pivot_wider(names_from = indicator,
-                values_from = title)
-    
-    
-    df_wide %>% 
-      mutate_at(if("cards" %in% names(df_wide)) "cards" else integer(0), as.character) %>% 
-      mutate_at(if("Event" %in% names(df_wide)) "Event" else integer(0), as.character) %>% 
-      mutate_at(if("Expansion" %in% names(df_wide)) "Expansion" else integer(0), as.character) %>% 
-      mutate_at(if("Project" %in% names(df_wide)) "Project" else integer(0), as.character) %>% 
-      mutate_at(if("Colony_Platinum" %in% names(df_wide)) "Colony_Platinum" else integer(0), as.character) %>% 
-      mutate_at(if("Landmark" %in% names(df_wide)) "Landmark" else integer(0), as.character) %>% 
-      mutate_at(if("Way" %in% names(df_wide)) "Way" else integer(0), as.character) %>% 
-      mutate_at(if("Shelters" %in% names(df_wide)) "Shelters" else integer(0), as.character) %>% 
-      mutate_at(if("Bane" %in% names(df_wide)) "Bane" else integer(0), as.character) %>% 
-      mutate_at(if("Boon" %in% names(df_wide)) "Boon" else integer(0), as.character) %>% 
-      mutate(cards = str_remove_all(cards, '\\"'),
-             cards = str_remove_all(cards, "c\\("),
-             cards = str_remove_all(cards, "\\, No Events\\/Landmarks"),
-             cards = str_remove_all(cards, "\\, No Events"),
-             cards = case_when(!grepl("Bane", cards) ~ str_remove_all(cards, "\\)"),
-                               TRUE ~ cards),
-             cards = str_remove_all(cards, "It\\'s Terminal "),
-             cards = str_remove_all(cards, "\\*"),
-             cards = str_replace_all(cards, "Smugglers", "Smuggler"),
-             cards = str_replace_all(cards, "Smuggler", "Smugglers"),
-             cards = str_replace_all(cards, "Watch Tower", "Watchtower"),
-             cards = str_replace_all(cards, "Stewart", "Steward"),
-             cards = str_replace_all(cards, "Settlers\\/Bustling Village", "Settlers"),
-             cards = str_replace_all(cards, "Settlers", "Settlers\\/Bustling Village"),
-             cards = str_replace_all(cards, "Gladiator\\/Fortune", "Gladiator"),
-             cards = str_replace_all(cards, "Gladiator", "Gladiator\\/Fortune"),
-             cards = str_replace_all(cards, "Encampment\\/Plunder", "Encampment"),
-             cards = str_replace_all(cards, "Encampment", "Encampment\\/Plunder"),
-             cards = str_replace_all(cards, "Candlestick Maker", "Candlestick"),
-             cards = str_replace_all(cards, "Candlestick", "Candlestick Maker"))
-    df
-    
-    
-    ,
-             Bane = str_remove_all(Bane, "Bane\\:"),
-             Bane = str_trim(Bane),
-             Event = str_remove_all(Event, "Event\\: "),
-             Event = str_remove_all(Event, "Events\\: "),
-             Event = str_replace_all(Event, "Scouting Party", "Scouting Part"),
-             Landmark = str_remove_all(Landmark, "Landmark\\: "),
-             Landmark = str_remove_all(Landmark, "Landmarks\\: "),
-             Project = str_remove_all(Project, "Project\\: "),
-             Project = str_remove_all(Project, "Projects\\: "),
-             Way = str_remove_all(Way, "Way\\: "),
-             Shelters = str_replace_all(Shelters, "With Shelters", "Shelters"),
-             Boon = str_remove_all(Boon, "Boons\\: "),
-             Expansion = str_replace_all(Expansion, "Promos", "Promo"))
