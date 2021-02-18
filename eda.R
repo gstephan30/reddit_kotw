@@ -1,7 +1,14 @@
-library(tidytext)
+library(tidyverse)
+library(lubridate)
 
-text_raw <- df_all %>% 
-  unnest(data) %>% 
+clean_cards <- readRDS("data/clean_cards.rds")
+recent_file <- list.files("data/", full.names = TRUE, pattern = "kotw") %>% sort(decreasing = TRUE) %>% .[1]
+load(recent_file)
+df <- df_all %>% unnest(data)
+
+
+
+text_raw <- df %>% 
   select(reddit_id, text)
 
 df_all %>% 

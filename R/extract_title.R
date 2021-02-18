@@ -139,7 +139,7 @@ correct_boon <- add_split_cards %>%
 card_clean <- correct_boon %>%
   left_join(
     df_cards %>% 
-      select(card_tag, group_tag) %>% 
+      select(card_tag, group_tag, cost, types) %>% 
       mutate(card_tag = str_to_lower(card_tag)) %>% 
       mutate(key = "card"),
     by = c("title" = "card_tag")
@@ -153,15 +153,87 @@ card_clean <- correct_boon %>%
   mutate(key = ifelse(is.na(key.x), key.y, key.x)) %>% 
   select(-key.x, -key.y) 
 
+shelters <- card_clean %>% 
+  mutate(shelters = case_when(title == "no shelters" ~ FALSE,
+                              title == "shelters" ~ TRUE,
+                              title == "no colonyplatinum or shelters" ~ FALSE,
+                              title == "with shelters" ~ TRUE,
+                              title == "colonyplatinumno shelters" ~ FALSE)) %>% 
+  filter(!is.na(shelters)) %>% 
+  select(reddit_id, shelters)
+
+colony_platinum <- card_clean %>% 
+  mutate(colony_platinum = case_when(title == "no colonyplatinum" ~ FALSE,
+                                     title == "colonyplatinum" ~ TRUE,
+                                     title == "no colonyplatinum or shelters" ~ FALSE,
+                                     title == "colony and platinum" ~ TRUE,
+                                     title == "colonyplatinumno shelters" ~ TRUE)) %>% 
+  filter(!is.na(colony_platinum)) %>% 
+  select(reddit_id, colony_platinum)
+
+card_clean_wo_col_shelt <- card_clean %>% 
+  filter(title != "no shelters",
+         title != "shelters",
+         title != "no colonyplatinum or shelters",
+         title != "with shelters",
+         title != "colonyplatinumno shelters",
+         title != "no colonyplatinum",
+         title != "colonyplatinum",
+         title != "no colonyplatinum or shelters",
+         title != "colony and platinum",
+         title != "colonyplatinumno shelters",
+         title != "")
 
 # test
-card_clean %>% 
+card_clean_wo_col_shelt %>% 
   filter(grepl("farmer", title))
 
 # further cleaning required
-card_clean %>% 
+card_clean_wo_col_shelt %>% 
   filter(is.na(key)) %>% count(title, sort = TRUE) %>% print(n=100)
 
+# menagerie is card and expansion
+menagerie_expansions <- kotw_cards %>% 
+  filter(grepl("Menagerie", title)) %>%
+  filter(str_detect(title, "\\[.*Menagerie")) %>% 
+  pull(reddit_id)
 
+menag_pre <- card_clean_wo_col_shelt %>% 
+  filter(reddit_id %in% menagerie_expansions) %>% 
+  filter(title == "menagerie") %>% 
+  group_by(reddit_id) %>% 
+  add_count(title) %>% 
+  mutate(key = case_when(n == 1 ~ "expansion", 
+                         n == 2 ~ "both"),
+         cost = ifelse(key == "expansion", NA, cost),
+         types = ifelse(key == "expansion", NA, types))
   
 
+mena_expansion_clean <- menag_pre %>% 
+  filter(n == 2) %>%
+  group_by(reddit_id) %>% 
+  mutate(test = c("card", "expansion"),
+         cost = ifelse(test == "expansion", NA, cost),
+         types = ifelse(test == "expansion", NA, types), 
+         key = test) %>% 
+  select(-test) %>% 
+  bind_rows(
+    menag_pre %>% 
+      filter(n != 2)
+  ) %>% ungroup()
+
+cards_menag <- card_clean_wo_col_shelt %>% 
+  filter(!(reddit_id %in% menagerie_expansions & title == "menagerie")) %>% 
+  bind_rows(mena_expansion_clean) %>% 
+  arrange(reddit_id)
+
+### Finish
+cards_clean <- cards_menag %>% 
+  left_join(bane) %>% 
+  left_join(shelters) %>% 
+  left_join(colony_platinum) %>% rowwise() %>% 
+  mutate(card_type = paste0(types, collapse = "-")) %>% 
+  select(-types, -group_tag) %>% 
+  ungroup()
+
+saveRDS(cards_clean, "data/clean_cards.rds")
