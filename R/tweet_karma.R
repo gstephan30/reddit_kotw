@@ -108,8 +108,8 @@ tweet_message <- paste0(
   karma_date, 
   " is ", 
   karma_title, 
-  karma_hash,
-  karma_link
+  karma_link,
+  karma_hash
 )
 
 post_tweet(
