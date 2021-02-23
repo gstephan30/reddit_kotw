@@ -2,6 +2,8 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 library(rvest)
+library(stringr)
+library(lubridate)
 
 dominion_ids <- tribble(
   ~name, ~id,
@@ -62,11 +64,160 @@ parse_bgg <- function(url_xml) {
 
 domionion_bgg <- dominion_ids %>% 
   mutate(url_xml = glue::glue("https://www.boardgamegeek.com/xmlapi/boardgame/{id}?stats=1&comments=1"),
-         forum_xml = glue::glue("https://www.boardgamegeek.com/xmlapi/forum?parameters")
          data = map(url_xml, parse_bgg))
+
+
+read_xml("https://boardgamegeek.com/xmlapi2/thing?type=boardgame&id=36218&stats=1&comments=1&ratingcomments=1&pagesize=100")
 
 forums <- read_xml("https://boardgamegeek.com/xmlapi2/forumlist?id=36218&type=thing")
 
-forum <- read_xml("https://www.boardgamegeek.com/xmlapi2/forum?id=450&page=1")
 
-thread <- read_xml("https://www.boardgamegeek.com/xmlapi2/thread?id=2438171")
+
+parse_forum <- function(forum_id){
+  
+  page <- 1
+  
+  print(paste0("Parsing Forum: ", forum_id, " page ", page))
+  
+  forum <- read_xml(
+    paste0(
+      "https://www.boardgamegeek.com/xmlapi2/forum?page=",
+      page,
+      "&id=",
+      forum_id
+      )
+    )
+  
+  posts <- forum %>% 
+    xml_find_all("//thread") %>% 
+    xml_attrs()
+  
+  data <- NULL
+  data[[page]] <- tibble(
+    forum_id = forum_id,
+    posts = posts
+  ) %>% 
+    unnest_wider(posts)
+  
+  while (nrow(data[[page]]) != 0) {
+    page <- page + 1
+    
+    print(paste0("Parsing Forum: ", forum_id, " page ", page))
+    
+    forum <- read_xml(
+      paste0(
+        "https://www.boardgamegeek.com/xmlapi2/forum?page=",
+        page,
+        "&id=",
+        forum_id
+      )
+    )
+    
+    posts <- forum %>% 
+      xml_find_all("//thread") %>% 
+      xml_attrs()
+    
+    data[[page]] <- tibble(
+      forum_id = forum_id,
+      posts = posts
+    ) %>% 
+      unnest_wider(posts)
+  }
+  
+  return(bind_rows(data))
+  
+}
+parse_forum(450)
+  
+parse_thread <- function(thread_id) {
+  
+  print(paste0("Reading Thread: ", thread_id))
+  
+  thread <- read_xml(
+    paste0(
+      "https://www.boardgamegeek.com/xmlapi2/thread?id=",
+      thread_id
+      )
+    )
+  
+  a <- thread %>% 
+    xml_find_all("//article") %>% 
+    as_list()
+  
+  b <- thread %>% 
+    xml_find_all("//article") %>% 
+    xml_attrs()
+  
+  data <- tibble(
+    thread_id = thread_id,
+    key = b,
+    xml_data = a
+  ) %>% unnest_wider(key) %>% 
+    unnest(xml_data) %>% 
+    mutate(key = names(xml_data),
+           #ind_len = lengths(key)
+    ) %>% 
+    unnest(xml_data) %>% 
+    mutate(value = as.character(xml_data),
+           value = str_replace_all(value, "[\r\n]" , ""), 
+           value = str_replace_all(value, "\\<br\\/\\>" , " "),
+           value = str_replace_all(value, "\\<i\\>" , ""),
+           value = str_replace_all(value, "\\<\\/i\\>" , "")) %>% 
+    select(-xml_data) %>% 
+    pivot_wider(
+      names_from = "key",
+      values_from = "value"
+    ) %>% 
+    mutate_at(vars(contains("date")), ymd_hms)
+  
+  #Sys.sleep(0.5)
+  
+  return(data)
+  
+}
+parse_thread(2438171)
+
+iterative_parse <- function(forum_id) {
+  
+  i <- 1
+  data_full <- NULL
+  data_full[[i]] <- parse_forum(forum_id) %>% 
+    select(forum_id, id) %>% 
+    mutate(id = as.numeric(id),
+           messages = map(id, possibly(parse_thread, NA_real_)))
+  
+  data_clean <- NULL
+  data_retour <- NULL
+  data_clean[[i]] <- data_full[[i]] %>% 
+    mutate(ind = lengths(messages)) %>% 
+    filter(ind != 1)
+  
+  data_retour[[i]] <- data_full[[i]] %>% 
+    mutate(ind = lengths(messages)) %>% 
+    filter(ind == 1) 
+  
+  while (nrow(data_retour[[i]]) != 0) {
+    
+    Sys.sleep(5)
+    
+    print(paste0("Retour: ", i))
+    
+    i <- i + 1
+    data_full[[i]] <- data_retour[[i-1]] %>% 
+      mutate(messages = map(id, possibly(parse_thread, NA_real_)))
+    
+    data_clean[[i]] <- data_full[[i]] %>% 
+      mutate(ind = lengths(messages)) %>% 
+      filter(ind != 1)
+    
+    data_retour[[i]] <- data_full[[i]] %>% 
+      mutate(ind = lengths(messages)) %>% 
+      filter(ind == 1) 
+    
+  }
+  
+  return(bind_rows(data_clean))
+}
+
+test <- iterative_parse(450)
+
