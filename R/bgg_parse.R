@@ -68,10 +68,64 @@ domionion_bgg <- dominion_ids %>%
 
 
 read_xml("https://boardgamegeek.com/xmlapi2/thing?type=boardgame&id=36218&stats=1&comments=1&ratingcomments=1&pagesize=100")
-
 forums <- read_xml("https://boardgamegeek.com/xmlapi2/forumlist?id=36218&type=thing")
 
+# forum parsing
 
+parse_thread <- function(thread_id) {
+  
+  #thread_id <- 568157
+  
+  print(paste0("Reading Thread: ", thread_id))
+  
+  thread <- read_xml(
+    paste0(
+      "https://www.boardgamegeek.com/xmlapi2/thread?id=",
+      thread_id
+      )
+    )
+  
+  a <- thread %>% 
+    xml_find_all("//article") %>% 
+    as_list()
+  
+  b <- thread %>% 
+    xml_find_all("//article") %>% 
+    xml_attrs()
+  
+  data <- tibble(
+    thread_id = thread_id,
+    key = b,
+    xml_data = a
+  ) %>% unnest_wider(key) %>% 
+    unnest(xml_data) %>% 
+    mutate(key = names(xml_data),
+           #ind_len = lengths(key)
+    ) %>% 
+    unnest(xml_data) %>% 
+    mutate(value = as.character(xml_data),
+           value = str_replace_all(value, "[\r\n]" , ""), 
+           value = str_replace_all(value, "\\<br\\/\\>" , " "),
+           value = str_replace_all(value, "\\<i\\>" , ""),
+           value = str_replace_all(value, "\\<\\/i\\>" , "")) %>% 
+    select(-xml_data) %>% 
+    rename(post_id = id) %>% 
+    group_by(post_id, key) %>% 
+    mutate(value2 = paste(value, collapse = " ")) %>% 
+    select(-value) %>% 
+    distinct() %>% 
+    pivot_wider(
+      names_from = "key",
+      values_from = "value2"
+    ) %>% 
+    mutate_at(vars(contains("date")), ymd_hms)
+  
+  #Sys.sleep(0.5)
+  
+  return(data)
+  
+}
+parse_thread(2438171)
 
 parse_forum <- function(forum_id){
   
@@ -85,8 +139,8 @@ parse_forum <- function(forum_id){
       page,
       "&id=",
       forum_id
-      )
     )
+  )
   
   posts <- forum %>% 
     xml_find_all("//thread") %>% 
@@ -127,55 +181,6 @@ parse_forum <- function(forum_id){
   return(bind_rows(data))
   
 }
-parse_forum(450)
-  
-parse_thread <- function(thread_id) {
-  
-  print(paste0("Reading Thread: ", thread_id))
-  
-  thread <- read_xml(
-    paste0(
-      "https://www.boardgamegeek.com/xmlapi2/thread?id=",
-      thread_id
-      )
-    )
-  
-  a <- thread %>% 
-    xml_find_all("//article") %>% 
-    as_list()
-  
-  b <- thread %>% 
-    xml_find_all("//article") %>% 
-    xml_attrs()
-  
-  data <- tibble(
-    thread_id = thread_id,
-    key = b,
-    xml_data = a
-  ) %>% unnest_wider(key) %>% 
-    unnest(xml_data) %>% 
-    mutate(key = names(xml_data),
-           #ind_len = lengths(key)
-    ) %>% 
-    unnest(xml_data) %>% 
-    mutate(value = as.character(xml_data),
-           value = str_replace_all(value, "[\r\n]" , ""), 
-           value = str_replace_all(value, "\\<br\\/\\>" , " "),
-           value = str_replace_all(value, "\\<i\\>" , ""),
-           value = str_replace_all(value, "\\<\\/i\\>" , "")) %>% 
-    select(-xml_data) %>% 
-    pivot_wider(
-      names_from = "key",
-      values_from = "value"
-    ) %>% 
-    mutate_at(vars(contains("date")), ymd_hms)
-  
-  #Sys.sleep(0.5)
-  
-  return(data)
-  
-}
-parse_thread(2438171)
 
 iterative_parse <- function(forum_id) {
   
@@ -203,9 +208,9 @@ iterative_parse <- function(forum_id) {
   
   while (nrow(data_retour[[i]]) != 0) {
     
-    print(paste0("Retour: ", i, ", starting in 5 sec"))
+    print(paste0("Retour: ", i, ", starting in 10 sec"))
     
-    Sys.sleep(5)
+    Sys.sleep(10)
     
     # check if empty message and break after 5 repeats
     laenge_retour[i] <- nrow(data_retour[[i]])
@@ -229,8 +234,12 @@ iterative_parse <- function(forum_id) {
     
     if (length(laenge_retour) > 10) {
       
+      
       rev_laenge <- laenge_retour %>% rev()
       a <- sum(rev_laenge[-1] %in% rev_laenge[1])
+      
+      #print(paste0("Laenge: ", length(laenge_retour)))
+      #print(paste0("a=", a))
       
       if (a > 5) {
         data_clean[[i+1]] <- data_retour[[i]]
@@ -244,11 +253,26 @@ iterative_parse <- function(forum_id) {
   return(bind_rows(data_clean))
 }
 
-test <- iterative_parse(450)
+sessions_dom <- iterative_parse(450)
+
+sessions_dom %>% 
+  select(-id) %>% 
+  unnest_wider(messages, names_sep = "_") %>% 
+  unnest(names(.)) %>% 
+  select(-messages_1) 
 
 
-test %>% 
-  rename(ids = id) %>% 
-  filter(!ids %in% c(582679,582653,582215,573618,390648)) %>% 
-  unnest_wider(messages) %>% 
-  unnest(cols = c("thread_id",  "id",         "username",   "link",       "postdate",    "editdate",    "numedits",   "subject",    "body"))
+
+
+  
+#### test sample
+test <- parse_forum(450) %>% 
+  sample_n(10) %>% 
+  select(forum_id, id) %>% 
+  bind_rows(
+    tibble(
+      id = c("582679","582653","582215","573618","390648","568157"),
+      forum_id = 450  
+    )
+    
+  )
