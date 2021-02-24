@@ -288,9 +288,9 @@ dominion_bgg_all <- dominion_forums %>%
 finish_parse <- Sys.time()
 (parse_time <- finish_parse - start_parse)
 
-
-
-
+heute <- gsub("-", "", Sys.Date())
+file_name <- paste0("data/", heute, "_bgg_forums.RData")
+save(dominion_bgg_all, file = filename)
 
 
 
