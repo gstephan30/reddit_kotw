@@ -233,9 +233,9 @@ iterative_parse <- function(forum_id) {
   
   while (nrow(data_retour[[i]]) != 0) {
     
-    print(paste0("Retour: ", i, ", starting in 10 sec"))
+    print(paste0("Retour: ", i, ", starting in 5 sec"))
     
-    Sys.sleep(10)
+    Sys.sleep(5)
     
     # check if empty message and break after 5 repeats
     laenge_retour[i] <- nrow(data_retour[[i]])
@@ -257,7 +257,7 @@ iterative_parse <- function(forum_id) {
       filter(test == TRUE) %>% 
       select(-ind, -test)
     
-    if (length(laenge_retour) > 10) {
+    if (length(laenge_retour) >= 10) {
       
       
       rev_laenge <- laenge_retour %>% rev()
@@ -281,10 +281,12 @@ iterative_parse <- function(forum_id) {
 
 ## parse everything
 
+start_parse <- Sys.time()
 dominion_bgg_all <- dominion_forums %>% 
   select(name, game_id, forum_id = id) %>% 
   mutate(forum_threads = map(forum_id, iterative_parse))
-
+finish_parse <- Sys.time()
+(parse_time <- finish_parse - start_parse)
 
 
 
