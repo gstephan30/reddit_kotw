@@ -189,30 +189,55 @@ iterative_parse <- function(forum_id) {
   data_clean <- NULL
   data_retour <- NULL
   data_clean[[i]] <- data_full[[i]] %>% 
-    mutate(ind = lengths(messages)) %>% 
-    filter(ind != 1)
+    mutate(ind = as.character(messages),
+           test = str_detect(ind, "^NA")) %>% 
+    filter(test == FALSE) %>% 
+    select(-ind, -test)
   
   data_retour[[i]] <- data_full[[i]] %>% 
-    mutate(ind = lengths(messages)) %>% 
-    filter(ind == 1) 
+    mutate(ind = as.character(messages),
+           test = str_detect(ind, "^NA")) %>% 
+    filter(test == TRUE)
+  
+  laenge_retour <- NULL
   
   while (nrow(data_retour[[i]]) != 0) {
     
+    print(paste0("Retour: ", i, ", starting in 5 sec"))
+    
     Sys.sleep(5)
     
-    print(paste0("Retour: ", i))
+    # check if empty message and break after 5 repeats
+    laenge_retour[i] <- nrow(data_retour[[i]])
+  
     
     i <- i + 1
     data_full[[i]] <- data_retour[[i-1]] %>% 
       mutate(messages = map(id, possibly(parse_thread, NA_real_)))
     
     data_clean[[i]] <- data_full[[i]] %>% 
-      mutate(ind = lengths(messages)) %>% 
-      filter(ind != 1)
+      mutate(ind = as.character(messages),
+             test = str_detect(ind, "^NA")) %>% 
+      filter(test == FALSE) %>% 
+      select(-ind, -test)
     
     data_retour[[i]] <- data_full[[i]] %>% 
-      mutate(ind = lengths(messages)) %>% 
-      filter(ind == 1) 
+      mutate(ind = as.character(messages),
+             test = str_detect(ind, "^NA")) %>% 
+      filter(test == TRUE) %>% 
+      select(-ind, -test)
+    
+    if (length(laenge_retour) > 10) {
+      
+      rev_laenge <- laenge_retour %>% rev()
+      a <- sum(rev_laenge[-1] %in% rev_laenge[1])
+      
+      if (a > 5) {
+        data_clean[[i+1]] <- data_retour[[i]]
+        data_retour[[i]] <- tibble()
+        
+      }
+    }
     
   }
   
@@ -221,3 +246,9 @@ iterative_parse <- function(forum_id) {
 
 test <- iterative_parse(450)
 
+
+test %>% 
+  rename(ids = id) %>% 
+  filter(!ids %in% c(582679,582653,582215,573618,390648)) %>% 
+  unnest_wider(messages) %>% 
+  unnest(cols = c("thread_id",  "id",         "username",   "link",       "postdate",    "editdate",    "numedits",   "subject",    "body"))
