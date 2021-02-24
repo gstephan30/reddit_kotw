@@ -6,7 +6,7 @@ library(stringr)
 library(lubridate)
 
 dominion_ids <- tribble(
-  ~name, ~id,
+  ~name, ~game_id,
   "dominion-intrigue", 40834,
   "dominion-update-pack", 209357,
   "dominion-intrigue-second-edition", 209419,
@@ -63,12 +63,37 @@ parse_bgg <- function(url_xml) {
 }
 
 domionion_bgg <- dominion_ids %>% 
-  mutate(url_xml = glue::glue("https://www.boardgamegeek.com/xmlapi/boardgame/{id}?stats=1&comments=1"),
+  mutate(url_xml = glue::glue("https://www.boardgamegeek.com/xmlapi/boardgame/{game_id}?stats=1&comments=1"),
          data = map(url_xml, parse_bgg))
 
-
 read_xml("https://boardgamegeek.com/xmlapi2/thing?type=boardgame&id=36218&stats=1&comments=1&ratingcomments=1&pagesize=100")
-forums <- read_xml("https://boardgamegeek.com/xmlapi2/forumlist?id=36218&type=thing")
+
+### Get forums ids per game
+parse_game_forums <- function(game_id) {
+  print(paste0("Parseing forum for game id: ", game_id))
+  
+  forums <- read_xml(
+    paste0(
+      "https://boardgamegeek.com/xmlapi2/forumlist?type=thing&id=",
+      game_id
+    )
+  ) %>% 
+    xml_find_all("//forum") %>% 
+    xml_attrs()
+  
+  df <- tibble(
+    key = forums
+  ) %>% 
+    unnest_wider(key)
+  
+  return(df)
+}
+
+dominion_forums <- dominion_ids %>% 
+  mutate(forums = map(game_id, parse_game_forums)) %>% 
+  unnest_wider(forums) %>% 
+  unnest(names(.)) %>% 
+  arrange(game_id)
 
 # forum parsing
 
@@ -125,7 +150,7 @@ parse_thread <- function(thread_id) {
   return(data)
   
 }
-parse_thread(2438171)
+#parse_thread(582679)
 
 parse_forum <- function(forum_id){
   
@@ -253,13 +278,36 @@ iterative_parse <- function(forum_id) {
   return(bind_rows(data_clean))
 }
 
+
+## parse everything
+
+dominion_bgg_all <- dominion_forums %>% 
+  select(name, game_id, forum_id = id) %>% 
+  mutate(forum_threads = map(forum_id, iterative_parse))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 sessions_dom <- iterative_parse(450)
 
 sessions_dom %>% 
-  select(-id) %>% 
+  rename(thread_id = id) %>% 
   unnest_wider(messages, names_sep = "_") %>% 
   unnest(names(.)) %>% 
   select(-messages_1) 
+
 
 
 
