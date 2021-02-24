@@ -101,13 +101,13 @@ karma_link <- paste0("https://www.reddit.com/r/dominion/comments/", rnd_id)
 karma_title <- karma_df$title
 karma_date <- format(karma_df$created, "%b %d, %Y")
 karma_picture <- here::here("images", paste0(rnd_id, ".jpg"))
-karma_hash <- " #dominion #boardgame #boardgamegeek #riograndegames #boardgames #deckbuilder #dominionboardgame "
+karma_hash <- " #dominion #boardgame #boardgamegeek #riograndegames #boardgames #deckbuilder #dominionboardgame"
 
 tweet_message <- paste0(
   karma_text, 
   karma_date, 
   " is ", 
-  karma_title, 
+  karma_title, " ",
   karma_link,
   karma_hash
 )
