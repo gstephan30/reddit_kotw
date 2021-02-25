@@ -5,6 +5,11 @@ library(rvest)
 library(stringr)
 library(lubridate)
 
+con <- file("data/runner.log")
+sink(con, append=TRUE)
+sink(con, append=TRUE, type="message")
+
+print("start script")
 dominion_ids <- tribble(
   ~name, ~game_id,
   "dominion-intrigue", 40834,
@@ -99,7 +104,7 @@ dominion_forums <- dominion_ids %>%
 
 parse_thread <- function(thread_id) {
   
-  #thread_id <- 568157
+  #thread_id <- 582679
   
   print(paste0("Reading Thread: ", thread_id))
   
@@ -125,7 +130,7 @@ parse_thread <- function(thread_id) {
   ) %>% unnest_wider(key) %>% 
     unnest(xml_data) %>% 
     mutate(key = names(xml_data),
-           #ind_len = lengths(key)
+           #ind_len = lengths(key)sor
     ) %>% 
     unnest(xml_data) %>% 
     mutate(value = as.character(xml_data),
@@ -296,7 +301,7 @@ save(dominion_bgg_all, file = filename)
 
 
 
-
+parse_forum(2430039)
 
 
 
