@@ -1,0 +1,40 @@
+---
+title: "picture"
+author: "Stephan"
+date: "2/25/2021"
+output: html_document
+---
+
+```{r}
+library(httr)
+library(dplyr)
+library(stringr)
+req <- GET("https://api.github.com/repos/blakevanlan/KingdomCreator/git/trees/master?recursive=1")
+stop_for_status(req)
+card_files <- unlist(lapply(content(req)$tree, "[", "path"), use.names = F) %>% 
+  grep("jpg", ., value = TRUE)
+
+
+files <- paste0("https://raw.githubusercontent.com/blakevanlan/KingdomCreator/master/", card_files)
+
+```
+
+
+
+
+```{r out.width=160, dev='png', fig.path="image_gen/", knit_asis}
+clean_cards <- readRDS("data/clean_cards.rds")
+picture_list <- list.files("images/") %>% 
+  as_tibble() %>% 
+  mutate(value = str_remove_all(value, "\\.jpg")) %>% 
+  pull(value)
+
+need_pci_df <- clean_cards %>% 
+  filter(!reddit_id %in% picture_list,
+         key == "card") %>% 
+  group_by(reddit_id) %>% 
+  arrange(card_type) %>% 
+  group_split()
+
+
+```

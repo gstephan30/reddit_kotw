@@ -88,10 +88,11 @@ cards_clean_pre <- kotw_cards %>%
          title = str_replace_all(title, "illgotten gains", "ill-gotten gains"),
          title = str_replace_all(title, "philosophers stone", "philosopher's stone"),
          title = str_replace_all(title, "night guardian", "guardian"),
+         title = str_replace_all(title, "young witch bane", "young witch"),
          title = ifelse(title  == "scouting part", "scouting party", title),
          title = ifelse(title  == "candlestick", "candlestick maker", title),
          title = ifelse(title  == "bath", "baths", title)) %>% 
-  mutate(title = ifelse(title == "smuggler", "smugglers", title)) %>% 
+  mutate(title = ifelse(title == "smuggler", "smugglers", title)) %>% filter(grepl("landmark", title, ignore.case = TRUE)) %>% print(n=100)
   # filter trash
   filter(!grepl("kotw", title, fixed = TRUE),
          !grepl("events", title, fixed = TRUE),
