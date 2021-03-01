@@ -56,6 +56,8 @@ colony_platin <- c(grep("colony", card_files, value = TRUE),
 
 
 create_picture <- function(data) {
+  #data <- need_pci_df[[189]]
+  
   need_cards <- data %>% 
     pull(title) %>% 
     str_to_lower(.) %>% 
@@ -78,13 +80,13 @@ create_picture <- function(data) {
     need_cards <- c(need_cards, bane_cards)
   }
   need_shelters <- unique(data$shelters)
-  need_shelters <- ifelse(is.na(need_shelters), FALSE, TRUE)
+  need_shelters <- ifelse(is.na(need_shelters), FALSE, need_shelters)
   if (need_shelters == TRUE) {
     need_cards <- c(need_cards, shelter_cards)
   }
   
   need_platin <- unique(data$colony_platinum)
-  need_platin <- ifelse(is.na(need_platin), FALSE, TRUE)
+  need_platin <- ifelse(is.na(need_platin), FALSE, need_platin)
   if (need_platin == TRUE) {
     need_cards <- c(need_cards, colony_platin)
   }
@@ -92,7 +94,7 @@ create_picture <- function(data) {
   deck_files <- NULL
   images <- NULL
   for (i in seq_along(need_cards)) {
-    deck_files[i] <- grep(need_cards[i], card_files, value = TRUE) %>% 
+    deck_files[i] <- grep(paste0(need_cards[i], ".jpg"), card_files, value = TRUE) %>% 
       grep("fr\\/", ., invert = TRUE, value = TRUE) %>% 
       sort(., decreasing = TRUE) %>% 
       .[1]
@@ -150,6 +152,6 @@ create_picture <- function(data) {
 }
 
 
-create_picture(need_pci_df[[189]])
+create_picture(need_pci_df[[112]])
 pic
 
