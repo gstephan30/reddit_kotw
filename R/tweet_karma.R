@@ -59,7 +59,7 @@ karma <- df_clean %>%
       rename(reddit_id = value)
   ) %>% 
   filter(!is.na(pic)) %>% 
-  top_n(10, karma) 
+  top_n(40, karma) 
 
 
 ## check if recently posted
@@ -96,7 +96,7 @@ karma_df <- df_clean %>%
   select(title, created) %>% 
   separate(title, c("title", "cards"), sep = "\\:")
 
-karma_text <- "One of the Top 10 highest Karma Kingdoms (comments + votes) of Reddits KOTW from "
+karma_text <- "One of the Top 40 highest Karma Kingdoms (comments + votes) of Reddits KOTW from "
 karma_link <- paste0("https://www.reddit.com/r/dominion/comments/", rnd_id)
 karma_title <- karma_df$title
 karma_date <- format(karma_df$created, "%b %d, %Y")
