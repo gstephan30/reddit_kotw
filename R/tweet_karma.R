@@ -4,6 +4,8 @@ library(rtweet)
 library(lubridate)
 library(tidyr)
 
+
+print("GETTING KEYS ...")
 source("R/setup_keys.R")
 api_key <- setup_keys("api_key")
 api_key_secret <- setup_keys("api_key_secret")
@@ -13,19 +15,23 @@ app_name <- setup_keys("app_name")
 
 heute <- today()
 
+print("SETTING UP TOKEN ...")
 token <- create_token(app = app_name,
                       consumer_key = api_key,
                       consumer_secret = api_key_secret,
                       access_token = access_token,
                       access_secret = access_token_secret)
 
+print("LOAD RECENT FILE ...")
 recent_file <- list.files("data/", full.names = TRUE, pattern = "kotw") %>% sort(decreasing = TRUE) %>% .[1]
 load(recent_file)
 
+print("GETTING KINGDOM PICTURES ...")
 picture_list <- list.files("images/") %>% 
   as_tibble() %>% 
   mutate(value = str_remove_all(value, "\\.jpg"))
 
+print("CLEANING DATA ...")
 df_clean <- df_all %>% 
   unnest(data) %>% 
   mutate(score = as.numeric(score)) %>% 
@@ -43,6 +49,7 @@ df_clean <- df_all %>%
 
 
 # karma
+print("FILTERING TOP 40 KINGDOMS ...")
 karma <- df_clean %>% 
   group_by(reddit_id) %>% 
   summarise(comments = n()-1,
@@ -63,6 +70,7 @@ karma <- df_clean %>%
 
 
 ## check if recently posted
+print("LOADING RECENT POSTED DATA ...")
 old_data <- readRDS("data/posted_ids.rds")
 
 ## clean up and reset if 40 is reached
@@ -80,6 +88,7 @@ while (rnd_id %in% (pull(old_data, id)) == TRUE) {
     pull(reddit_id)
 }
 
+print("ADDING NEW KINGDOM ...")
 karma_ids <- old_data %>% 
   bind_rows(
     tibble(
@@ -90,9 +99,11 @@ karma_ids <- old_data %>%
   ) %>% 
   filter(!is.na(id))
 
+print("SAVING DATA OF POSTED IDS ...")
 saveRDS(karma_ids, file = "data/posted_ids.rds")
 
 # karama tweet
+print("SETTING UP TWEET ...")
 karma_df <- df_clean %>% 
   filter(
     reddit_id %in% rnd_id
@@ -117,9 +128,11 @@ tweet_message <- paste0(
   karma_hash
 )
 
+print("POST TWEET ...")
 post_tweet(
   tweet_message,
   media = karma_picture
 )
 
+print("FINISHED!")
 
