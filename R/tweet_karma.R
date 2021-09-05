@@ -65,6 +65,12 @@ karma <- df_clean %>%
 ## check if recently posted
 old_data <- readRDS("data/posted_ids.rds")
 
+## clean up and reset if 40 is reached
+if (nrow(old_data) >= 40) {
+  print("Limit of old data reached, need to reset/")
+  old_data <- tibble(key = NA, date = NA, id = NA)
+}
+
 rnd_id <- sample_n(karma, 1) %>% 
   pull(reddit_id)
 
@@ -81,11 +87,10 @@ karma_ids <- old_data %>%
       date = heute,
       id = rnd_id  
     )
-  )
+  ) %>% 
+  filter(!is.na(id))
 
 saveRDS(karma_ids, file = "data/posted_ids.rds")
-
-
 
 # karama tweet
 karma_df <- df_clean %>% 
