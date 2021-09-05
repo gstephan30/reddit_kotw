@@ -12,7 +12,8 @@ token <- create_token(app = app_name,
                       consumer_key = api_key,
                       consumer_secret = api_key_secret,
                       access_token = access_token,
-                      access_secret = access_token_secret)
+                      access_secret = access_token_secret,
+		      set_renv = FALSE)
 
 hashtags <- c("#dominionboardgame", "#dominiongame", "#dominioncardgame", "dominion AND boardgame")
 dominion_hashtags <- search_tweets2(q = hashtags) 
