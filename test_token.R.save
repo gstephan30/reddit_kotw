@@ -1,7 +1,4 @@
-
 library(rtweet)
-
-options(httr_oauth_cache = TRUE)
 
 print("GETTING KEYS ...")
 source("R/setup_keys.R")
@@ -17,15 +14,15 @@ print(access_token)
 print(access_token_secret)
 print(app_name)
 
+
 print("SETTING UP TOKEN ...")
 token <- create_token(app = app_name,
                       consumer_key = api_key,
                       consumer_secret = api_key_secret,
                       access_token = access_token,
                       access_secret = access_token_secret,
-                      set_renv = TRUE)
+                      set_renv = FALSE)
 print(token)
-print(api_key)
 
 print("GET TOKEN")
 get_token()
