@@ -9,6 +9,10 @@ access_token_secret <- setup_keys("access_token_secret")
 app_name <- setup_keys("app_name")
 
 print(api_key)
+print(api_key_secret)
+print(access_token)
+print(access_token_secret)
+print(app_name)
 
 print("SETTING UP TOKEN ...")
 token <- create_token(app = app_name,
@@ -17,6 +21,8 @@ token <- create_token(app = app_name,
                       access_token = access_token,
                       access_secret = access_token_secret,
                       set_renv = FALSE)
+print(token)
+
 
 print("GET TOKEN")
 get_token()
