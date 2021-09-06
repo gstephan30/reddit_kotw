@@ -1,0 +1,22 @@
+library(rtweet)
+
+print("GETTING KEYS ...")
+source("R/setup_keys.R")
+api_key <- setup_keys("api_key")
+api_key_secret <- setup_keys("api_key_secret")
+access_token <- setup_keys("access_token")
+access_token_secret <- setup_keys("access_token_secret")
+app_name <- setup_keys("app_name")
+
+print(api_key)
+
+print("SETTING UP TOKEN ...")
+token <- create_token(app = app_name,
+                      consumer_key = api_key,
+                      consumer_secret = api_key_secret,
+                      access_token = access_token,
+                      access_secret = access_token_secret,
+                      set_renv = FALSE)
+
+print("GET TOKEN")
+get_token()
