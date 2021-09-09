@@ -21,7 +21,7 @@ token <- create_token(app = app_name,
                       consumer_secret = api_key_secret,
                       access_token = access_token,
                       access_secret = access_token_secret,
-                      set_renv = FALSE)
+                      set_renv = TRUE)
 
 print("LOAD RECENT FILE ...")
 recent_file <- list.files("data/", full.names = TRUE, pattern = "kotw") %>% sort(decreasing = TRUE) %>% .[1]
