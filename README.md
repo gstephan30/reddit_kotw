@@ -4,7 +4,7 @@
 Importing KotW set from [reddit](https://www.reddit.com/r/dominion/search/?q=%22KotW%20%22&restrict_sr=1).
 
 
-### Importing the data via reddits json API interface with R with this code:
+### Importing the data via reddits json API interface with R with this following code:
 
 ```
 library(tidyverse)
