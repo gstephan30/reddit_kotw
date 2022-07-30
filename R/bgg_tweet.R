@@ -57,19 +57,21 @@ create_post_tweet <- function(expansion, subject, link, topic, n) {
   )
 }
 
-tweets <- NULL
-for (i in 1:nrow(new_posts)) {
-  tweets[[i]] <- create_post_tweet(new_posts[i, "expansion"] %>% pull(),
-                                   new_posts[i, "subject"] %>% pull(),
-                                   new_posts[i, "link"] %>% pull(),
-                                   new_posts[i, "topic"] %>% pull(), 
-                                   new_posts[i, "n"] %>% pull()
-                                   )
-}
-
-### prevent of posting more then 10 tweets
-if (length(tweets) >=10) {
-  tweets <- tweets[c(1:10)]
+if (nrow(new_posts) > 0) {
+  tweets <- NULL
+  for (i in 1:nrow(new_posts)) {
+    tweets[[i]] <- create_post_tweet(new_posts[i, "expansion"] %>% pull(),
+                                     new_posts[i, "subject"] %>% pull(),
+                                     new_posts[i, "link"] %>% pull(),
+                                     new_posts[i, "topic"] %>% pull(), 
+                                     new_posts[i, "n"] %>% pull()
+    )
+  }
+  
+  ### prevent of posting more then 10 tweets
+  if (length(tweets) >=10) {
+    tweets <- tweets[c(1:10)]
+  }
 }
 
 # save and mark that all tweeted
