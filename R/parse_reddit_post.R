@@ -28,14 +28,19 @@ parse_reddit <- function(url) {
 #' for rpi needed to swap from read_json to fromJSON
 #' due to lexica errors
 parse_reddit_from <- function(url) {
+  # url <- "https://www.reddit.com/r/dominion/search.json?q=kotw%201%2F&restrict_sr=1&limit=100"
   print(url)
   kotw_base <- fromJSON(url)
-  kotw_entries <- tibble(json = kotw_base) %>%
+  kotw_entries <- tibble(
+    key = names(kotw_base),
+    json = kotw_base) %>%
     slice(2) %>%
     unnest(json) %>%
-    slice(5) %>%
+    mutate(key = names(json)) %>% 
+    filter(key == "children") %>% 
     unnest_wider(json) %>%
-    unnest(cols = c(kind, data))
+    unnest(cols = c(kind, data)) %>% 
+    select(-1)
   
   return(kotw_entries)
 }

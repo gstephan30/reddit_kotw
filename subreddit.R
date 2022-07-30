@@ -10,7 +10,7 @@ library(lubridate)
 source("R/parse_reddit.R")
 source("R/parse_reddit_post.R")
 
-base_url <- "https://www.reddit.com/r/dominion/search.json?q=%22kotw%20{month}%2F%22&restrict_sr=1&limit=100"
+base_url <- "https://www.reddit.com/r/dominion/search.json?q=kotw%20{month}%2F&restrict_sr=1&limit=100"
 
 df_url <- tibble(
   month = 1:12
