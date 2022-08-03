@@ -111,7 +111,8 @@ karma_df <- df_clean %>%
   ) %>% 
   filter(grepl("t3", name)) %>% 
   select(title, created) %>% 
-  separate(title, c("title", "cards"), sep = "\\:")
+  separate(title, c("title", "cards"), sep = "\\:") %>% 
+  distinct() 
 
 karma_text <- "One of the Top 40 highest Karma Kingdoms (comments + votes) of Reddits KOTW from "
 karma_link <- paste0("https://www.reddit.com/r/dominion/comments/", rnd_id)
