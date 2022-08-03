@@ -6,6 +6,7 @@ library(stringr)
 library(glue)
 library(jsonlite)
 library(lubridate)
+library(rvest)
 
 source("R/parse_reddit.R")
 source("R/parse_reddit_post.R")

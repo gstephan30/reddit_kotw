@@ -66,14 +66,27 @@ download_images <- function(kotw_df) {
 }
 
 
-
-
-check_pic <- function(reddit_id, image_url) {
+check_pic <- function(reddit_id, imgur_url) {
   image <- paste0(reddit_id, ".jpg")
   if (!file.exists(paste0("images/", image))) {
     print(paste0("Downloading image: ", image))
+    
+    image_url <- tibble(
+      key = read_html(imgur_url) %>% 
+        html_elements("meta") %>% 
+        html_attr("property"),
+      value = read_html(imgur_url) %>% 
+        html_elements("meta") %>% 
+        html_attr("content")
+    ) %>% 
+      filter(key == "og:image") %>% 
+      pull(value) %>% 
+      str_remove(., "\\?fb")
+    
+    print(image_url)
+    
     download.file(
-      url = paste0(image_url, "/zip"),
+      url = image_url,
       destfile = paste0("images/", image),
       mode = "wb"
     )
@@ -81,3 +94,18 @@ check_pic <- function(reddit_id, image_url) {
     print(paste0(image, " already exists."))
   }
 }
+# check_pic("ugcgq2", "https://imgur.com/a/LVQoD7k")
+
+# check_pic <- function(reddit_id, image_url) {
+#   image <- paste0(reddit_id, ".jpg")
+#   if (!file.exists(paste0("images/", image))) {
+#     print(paste0("Downloading image: ", image))
+#     download.file(
+#       url = paste0(image_url, "/zip"),
+#       destfile = paste0("images/", image),
+#       mode = "wb"
+#     )
+#   } else {
+#     print(paste0(image, " already exists."))
+#   }
+# }
