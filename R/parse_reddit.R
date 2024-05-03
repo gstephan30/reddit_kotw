@@ -9,19 +9,33 @@ get_post <- function(json_tibble){
 }
 
 get_comments <- function(json_tibble){
-  json_tibble %>% 
+  pre_comm <- json_tibble %>% 
     unnest_wider(json) %>% 
     unnest_wider(data) %>% 
     slice(2) %>% 
     unnest(children) %>% 
-    unnest_wider(children, names_sep = "_") %>% 
-    unnest_wider(children_data) 
+    unnest_wider(children, names_sep = "_") 
+  
+  if (nrow(pre_comm) > 0) {
+    comm_data <- pre_comm |> 
+      unnest_wider(children_data)   
+  } else {
+    comm_data <- pre_comm
+  }
+  
+  return(comm_data)
+  
 }
 
 get_replies <- function(comment_tibble){
-  comm_raw <- comment_tibble %>% 
-    select(replies) %>% 
-    unnest_wider(replies, names_sep = "_")
+  
+  if ("replies" %in% colnames(comment_tibble)) {
+    comm_raw <- comment_tibble %>% 
+      select(replies) %>% 
+      unnest_wider(replies, names_sep = "_")
+  } else {
+    comm_raw <- NA
+  }
   
   if ("replies_data" %in% colnames(comm_raw)) {
     df <- comm_raw %>% 
@@ -50,6 +64,7 @@ subreddit <- function(json_url){
   #json_url <- "https://www.reddit.com/r/dominion/comments/4703zy/kotw_221_conspirator_courtyard_crossroads_great/d0f7luu.json"
   #json_url <- "https://www.reddit.com/r/dominion/comments/4ac0xg"
   #json_url <- "https://www.reddit.com/r/dominion/comments/3wqx3o"
+  #json_url <- "https://www.reddit.com/r/dominion/comments/169lrqa"
   
   print(json_url)
   
@@ -186,7 +201,7 @@ subreddit <- function(json_url){
         bind_rows(df_reply[-depth_run]) %>%
         mutate_all(as.character)
     }
-   
+    
   } else {
     df <- df_post %>% 
       mutate_all(as.character)
