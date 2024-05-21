@@ -14,7 +14,7 @@ source("R/parse_reddit_post.R")
 base_url <- "https://www.reddit.com/r/dominion/search.json?q=kotw%20{month}%2F&restrict_sr=1&limit=100"
 
 df_url <- tibble(
-  month = 1:12
+  month = c(1:12, month.abb),
 ) %>% 
   mutate(
     url = glue::glue(base_url)
